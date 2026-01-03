@@ -215,6 +215,10 @@ export class WhisplayDisplay {
     this.buttonDoubleClickCallback = callback || null;
   }
 
+  onButtonTripleClick(callback: (() => void) | null): void {
+    this.buttonTripleClickCallback = callback || null;
+  }
+
   onCameraCapture(callback: () => void): void {
     this.onCameraCaptureCallback = callback;
   }
