@@ -9,6 +9,7 @@ import {
   onButtonPressed,
   onButtonReleased,
   onButtonDoubleClick,
+  onButtonTripleClick,
   display,
   getCurrentStatus,
   onCameraCapture,
@@ -23,6 +24,7 @@ import { extractEmojis } from "../utils";
 import { StreamResponser } from "./StreamResponsor";
 import { cameraDir, recordingsDir } from "../utils/dir";
 import { getLatestDisplayImg, setLatestCapturedImg } from "../utils/image";
+import MeetingRecorder from "./MeetingRecorder";
 
 class ChatFlow {
   currentFlowName: string = "";
@@ -34,10 +36,14 @@ class ChatFlow {
   thinkingSentences: string[] = [];
   answerId: number = 0;
   enableCamera: boolean = false;
+  meetingRecorder: MeetingRecorder;
+  enableMeetingMode: boolean = false;
 
   constructor(options: { enableCamera?: boolean } = {}) {
     console.log(`[${getCurrentTimeTag()}] ChatBot started.`);
     this.recordingsDir = recordingsDir;
+    this.enableMeetingMode = process.env.ENABLE_MEETING_MODE === "true";
+    this.meetingRecorder = new MeetingRecorder();
     this.setCurrentFlow("sleep");
     this.streamResponser = new StreamResponser(
       ttsProcessor,
@@ -117,6 +123,13 @@ class ChatFlow {
             setLatestCapturedImg(captureImgPath);
           });
         }
+        // meeting mode
+        if (this.enableMeetingMode) {
+          onButtonTripleClick(() => {
+            console.log(`[${getCurrentTimeTag()}] Triple-click detected - toggling meeting mode`);
+            this.meetingRecorder.toggle();
+          });
+        }
         display({
           status: "idle",
           emoji: "😴",
@@ -125,7 +138,7 @@ class ChatFlow {
             ? {
                 text: `Long Press the button to say something${
                   this.enableCamera ? ",\ndouble click to launch camera" : ""
-                }.`,
+                }${this.enableMeetingMode ? ",\ntriple click for meeting mode" : ""}.`,
               }
             : {}),
         });

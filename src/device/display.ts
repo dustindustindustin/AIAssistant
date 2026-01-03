@@ -36,6 +36,7 @@ export class WhisplayDisplay {
   private buttonPressedCallback: () => void = () => {};
   private buttonReleasedCallback: () => void = () => {};
   private buttonDoubleClickCallback: (() => void) | null = null;
+  private buttonTripleClickCallback: (() => void) | null = null;
   private onCameraCaptureCallback: () => void = () => {};
   private isReady: Promise<void>;
   private pythonProcess: any; // Placeholder for Python process if needed
@@ -51,8 +52,8 @@ export class WhisplayDisplay {
   }
 
   startMonitoringDoubleClick(): void {
-    if (this.buttonDetectInterval || !this.buttonDoubleClickCallback) return;
-    // check if there are two presses and two releases
+    if (this.buttonDetectInterval || (!this.buttonDoubleClickCallback && !this.buttonTripleClickCallback)) return;
+    // check if there are two or three presses and releases
     this.buttonDetectInterval = setTimeout(() => {
       // clean old click arrays >= 1500ms
       const now = Date.now();
@@ -62,12 +63,19 @@ export class WhisplayDisplay {
       this.buttonReleaseTimeArray = this.buttonReleaseTimeArray.filter(
         (time) => now - time <= 1000
       );
+      
+      const tripleClickDetected =
+        this.buttonPressTimeArray.length >= 3 &&
+        this.buttonReleaseTimeArray.length >= 3;
+      
       const doubleClickDetected =
         this.buttonPressTimeArray.length >= 2 &&
         this.buttonReleaseTimeArray.length >= 2;
 
-      if (doubleClickDetected) {
-        this.buttonDoubleClickCallback?.();
+      if (tripleClickDetected && this.buttonTripleClickCallback) {
+        this.buttonTripleClickCallback();
+      } else if (doubleClickDetected && this.buttonDoubleClickCallback) {
+        this.buttonDoubleClickCallback();
       } else {
         const lastReleaseTime = this.buttonReleaseTimeArray.pop() || 0;
         const lastPressTime = this.buttonPressTimeArray.pop() || 0;
@@ -276,6 +284,8 @@ export const onButtonReleased =
   displayInstance.onButtonReleased.bind(displayInstance);
 export const onButtonDoubleClick =
   displayInstance.onButtonDoubleClick.bind(displayInstance);
+export const onButtonTripleClick =
+  displayInstance.onButtonTripleClick.bind(displayInstance);
 export const onCameraCapture =
   displayInstance.onCameraCapture.bind(displayInstance);
 

@@ -45,3 +45,6 @@ ensureDirExists(imageDir);
 
 export const cameraDir = path.join(dataDir, "camera");
 ensureDirExists(cameraDir);
+
+export const meetingsDir = path.join(dataDir, "meetings");
+ensureDirExists(meetingsDir);
