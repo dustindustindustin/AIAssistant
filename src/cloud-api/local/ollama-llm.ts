@@ -94,21 +94,29 @@ const chatWithLLMStream: ChatWithLLMStreamFunction = async (
 
   try {
     console.log(`[Ollama] Sending request to model: ${ollamaModel}`);
+    
+    // Build request payload
+    const payload: any = {
+      model: ollamaModel,
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      stream: true,
+      options: {
+        temperature: 0.7,
+      },
+      tools: ollamaEnableTools ? llmTools : [],
+    };
+    
+    // Only add 'think' parameter if enabled (some models like phi4 don't support it)
+    if (enableThinking) {
+      payload.think = true;
+    }
+    
     const response = await axios.post(
       `${ollamaEndpoint}/api/chat`,
-      {
-        model: ollamaModel,
-        messages: messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        think: enableThinking,
-        stream: true,
-        options: {
-          temperature: 0.7,
-        },
-        tools: ollamaEnableTools ? llmTools : [],
-      },
+      payload,
       {
         headers: {
           "Content-Type": "application/json",

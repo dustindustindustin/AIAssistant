@@ -675,6 +675,40 @@ New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 1143
 
 ---
 
+### Ollama Returns 400 Bad Request Error
+
+**Symptoms:** AI responds with error message, logs show `Request failed with status code 400`
+
+**Cause:** The model doesn't support certain features being requested (like thinking mode or tool calling).
+
+**Solution for phi4 users:**
+
+1. **Disable thinking mode** in your `.env` file:
+   ```env
+   ENABLE_THINKING=false
+   ```
+
+2. **Restart the chatbot:**
+   ```bash
+   bash run_chatbot.sh
+   ```
+
+**Alternative:** Switch to a model that supports thinking:
+```bash
+ollama pull deepseek-r1:1.5b    # Smaller reasoning model
+ollama pull qwen2.5:7b           # Good reasoning support
+```
+
+Then update `.env`:
+```env
+OLLAMA_MODEL=deepseek-r1:1.5b
+ENABLE_THINKING=true
+```
+
+**Note:** Not all models support all features. Check Ollama's model documentation for capabilities.
+
+---
+
 ### Piper Download 404 Error
 
 **If `piper_arm64.tar.gz` gives 404:**
