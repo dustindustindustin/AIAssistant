@@ -154,7 +154,10 @@
 
 - [X] Lines 51-60: Add reconnection logic for socket failures ✅ **IMPLEMENTED**
   - `connectWithRetry()` method exists (lines 125-147)
-  - Retries 8 times with 1 second delays (max ~8s startup delay)
+  - Retries 20 times with progressive delays:
+    - Attempts 1-5: 2s delay (Python startup time)
+    - Attempts 6-15: 1s delay (catching ready state)
+    - Attempts 16-20: 500ms delay (quick final checks)
   - Logs attempts and final failure
 - [X] Lines 101-111: Handle Python process crashes ⚠️ **PARTIAL**
   - Error logged but process not restarted automatically
@@ -288,7 +291,7 @@
    - No verification file was created successfully
 
 **What's Working:**
-- ✅ Display socket has retry logic (8 attempts, 1s delay)
+- ✅ Display socket has retry logic (20 attempts, 1s delay)
 - ✅ Button press interrupts work correctly
 - ✅ Basic error logging exists throughout
 - ✅ Meeting max duration handled properly

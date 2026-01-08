@@ -47,7 +47,7 @@ export class WhisplayDisplay {
   constructor() {
     this.startPythonProcess();
     this.isReady = new Promise<void>((resolve) => {
-      this.connectWithRetry(8, resolve);
+      this.connectWithRetry(20, resolve);
     });
   }
 
@@ -135,7 +135,9 @@ export class WhisplayDisplay {
           .catch((err) => {
             if (attempt < retries) {
               console.log(`Connection attempt ${attempt} failed, retrying...`);
-              setTimeout(() => attemptConnection(attempt + 1), 1000);
+              // Progressive delay: start slow (2s for first 5), then faster (1s), then quick (500ms)
+              const delay = attempt <= 5 ? 2000 : attempt <= 15 ? 1000 : 500;
+              setTimeout(() => attemptConnection(attempt + 1), delay);
             } else {
               console.error("Failed to connect after multiple attempts:", err);
               reject(err);

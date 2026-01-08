@@ -632,9 +632,13 @@ ollama pull qwen3-vl:4b               # 2.5GB - Vision
 
 **Impact:** Display won't show status. **Voice functionality still works!**
 
-**Behavior:** The app will retry connection 8 times (1 second delay each) before giving up. Maximum ~8 second startup delay if service is slow to start.
+**Behavior:** The app retries connection 20 times with progressive delays:
+- First 5 attempts: 2-second delays (allowing Python service startup)
+- Next 10 attempts: 1-second delays (catching when service becomes ready)
+- Final 5 attempts: 500ms delays (quick final checks)
+- Total maximum wait: ~22 seconds
 
-**To fix:**
+**To fix:******
 ```bash
 # Install Whisplay HAT drivers (includes display socket service)
 cd ~
