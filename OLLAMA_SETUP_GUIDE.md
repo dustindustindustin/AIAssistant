@@ -632,6 +632,8 @@ ollama pull qwen3-vl:4b               # 2.5GB - Vision
 
 **Impact:** Display won't show status. **Voice functionality still works!**
 
+**Behavior:** The app will retry connection 8 times (1 second delay each) before giving up. Maximum ~8 second startup delay if service is slow to start.
+
 **To fix:**
 ```bash
 # Install Whisplay HAT drivers (includes display socket service)
@@ -696,6 +698,34 @@ chmod +x piper
 cd piper
 chmod +x piper  # For the executable inside
 ```
+
+---
+
+### Audio Recording Clipping/Distortion
+
+**Symptoms:** Sox warnings like "rate clipped samples; decrease volume?" or distorted recordings.
+
+**Cause:** Input volume too high causing audio clipping.
+
+**Solutions:**
+
+1. **Automatic (already implemented):** The code now includes `-v 0.6` flag to reduce recording volume to 60%.
+
+2. **Hardware adjustment (recommended):**
+   ```bash
+   # Check current capture volume
+   amixer -c 1 contents
+   
+   # Reduce capture volume to 60%
+   amixer -c 1 set Capture 60%
+   
+   # Or use interactive mixer (F4 for Capture, arrows to adjust)
+   alsamixer -c 1
+   ```
+
+3. **Fine-tune software volume:** Edit [audio.ts](src/device/audio.ts) and adjust the `-v` value (0.5-0.7 range).
+
+**Note:** Combining both hardware and software volume reduction gives best results.
 
 ---
 

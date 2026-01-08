@@ -47,7 +47,7 @@ export class WhisplayDisplay {
   constructor() {
     this.startPythonProcess();
     this.isReady = new Promise<void>((resolve) => {
-      this.connectWithRetry(15, resolve);
+      this.connectWithRetry(8, resolve);
     });
   }
 
@@ -135,7 +135,7 @@ export class WhisplayDisplay {
           .catch((err) => {
             if (attempt < retries) {
               console.log(`Connection attempt ${attempt} failed, retrying...`);
-              setTimeout(() => attemptConnection(attempt + 1), 5000);
+              setTimeout(() => attemptConnection(attempt + 1), 1000);
             } else {
               console.error("Failed to connect after multiple attempts:", err);
               reject(err);
@@ -162,35 +162,48 @@ export class WhisplayDisplay {
       });
       this.client.on("data", (data: Buffer) => {
         const dataString = data.toString();
-        if (dataString.trim() === "OK") {
-          return;
-        }
-        console.log(
-          `[${getCurrentTimeTag()}] Received data from Whisplay hat:`,
-          dataString
-        );
-        try {
-          const json = JSON.parse(dataString);
-          if (json.event === "button_pressed") {
-            this.buttonPressTimeArray.push(Date.now());
-            this.startMonitoringDoubleClick();
-            if (!this.buttonDetectInterval) {
-              console.log('emit pressed')
-              this.buttonPressedCallback();
+        // Split by newlines to handle multiple messages in one buffer
+        const lines = dataString.split('\n').filter(line => line.trim());
+        
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          
+          // Skip "OK" acknowledgment messages
+          if (trimmedLine === "OK") {
+            continue;
+          }
+          
+          try {
+            const json = JSON.parse(trimmedLine);
+            console.log(
+              `[${getCurrentTimeTag()}] Received data from Whisplay hat:`,
+              trimmedLine
+            );
+            
+            if (json.event === "button_pressed") {
+              this.buttonPressTimeArray.push(Date.now());
+              this.startMonitoringDoubleClick();
+              if (!this.buttonDetectInterval) {
+                console.log('emit pressed')
+                this.buttonPressedCallback();
+              }
+            }
+            if (json.event === "button_released") {
+              this.buttonReleaseTimeArray.push(Date.now());
+              if (!this.buttonDetectInterval) {
+                console.log('emit released')
+                this.buttonReleasedCallback();
+              }
+            }
+            if (json.event === "camera_capture") {
+              this.onCameraCaptureCallback();
+            }
+          } catch (e) {
+            // Only log actual parse errors, not OK messages
+            if (trimmedLine !== "OK") {
+              console.error(`Failed to parse JSON from data: "${trimmedLine}"`);
             }
           }
-          if (json.event === "button_released") {
-            this.buttonReleaseTimeArray.push(Date.now());
-            if (!this.buttonDetectInterval) {
-              console.log('emit released')
-              this.buttonReleasedCallback();
-            }
-          }
-          if (json.event === "camera_capture") {
-            this.onCameraCaptureCallback();
-          }
-        } catch {
-          console.error("Failed to parse JSON from data");
         }
       });
       this.client.on("error", (err: any) => {
