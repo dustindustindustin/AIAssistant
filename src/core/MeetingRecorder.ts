@@ -1,5 +1,5 @@
 import moment from "moment";
-import { spawn, ChildProcess } from "child_process";
+import { spawn, ChildProcess, exec } from "child_process";
 import { display } from "../device/display";
 import { getCurrentTimeTag } from "../utils/index";
 import { meetingsDir } from "../utils/dir";
@@ -23,9 +23,50 @@ class MeetingRecorder {
     }
   }
 
-  start(): void {
+  // Check available disk space before recording
+  private checkDiskSpace(): Promise<boolean> {
+    return new Promise((resolve) => {
+      exec("df -h . | tail -1 | awk '{print $4}'", (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[MeetingRecorder] Could not check disk space:`, error);
+          // Assume we have space if check fails
+          resolve(true);
+          return;
+        }
+        const available = stdout.trim();
+        console.log(`[MeetingRecorder] Available disk space: ${available}`);
+        
+        // Parse the size - if it ends with G (gigabytes), we're good
+        // If M (megabytes), check if > 500M
+        if (available.includes('G')) {
+          resolve(true);
+        } else if (available.includes('M')) {
+          const megabytes = parseFloat(available);
+          resolve(megabytes > 500);
+        } else {
+          // Less than 1MB or other unit
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  async start(): Promise<void> {
     if (this.isRecording) {
-      console.log("Meeting recording already in progress");
+      console.log("[MeetingRecorder] Meeting recording already in progress");
+      return;
+    }
+
+    // Check disk space before starting
+    const hasSpace = await this.checkDiskSpace();
+    if (!hasSpace) {
+      console.error("[MeetingRecorder] Insufficient disk space for recording");
+      display({
+        status: "error",
+        emoji: "💾",
+        text: "Not enough disk space!\nFree up space and try again.",
+        RGB: "#ff0000",
+      });
       return;
     }
 
@@ -34,7 +75,7 @@ class MeetingRecorder {
     )}.${recordFileFormat}`;
     this.startTime = new Date();
 
-    console.log(`[${getCurrentTimeTag()}] Starting meeting recording: ${this.currentMeetingFile}`);
+    console.log(`[MeetingRecorder] Starting meeting recording: ${this.currentMeetingFile}`);
 
     // Start continuous recording with sox
     this.recordingProcess = spawn("sox", [
@@ -51,8 +92,18 @@ class MeetingRecorder {
     ]);
 
     this.recordingProcess.on("error", (error) => {
-      console.error("Meeting recording error:", error);
+      console.error("[MeetingRecorder] Recording process error:", error);
+      display({
+        status: "error",
+        emoji: "❌",
+        text: `Recording failed: ${error.message}`,
+        RGB: "#ff0000",
+      });
       this.stop();
+    });
+
+    this.recordingProcess.on("exit", (code, signal) => {
+      console.log(`[MeetingRecorder] Recording process exited with code ${code}, signal ${signal}`);
     });
 
     this.isRecording = true;
@@ -76,17 +127,17 @@ class MeetingRecorder {
 
   stop(): void {
     if (!this.isRecording) {
-      console.log("No meeting recording in progress");
+      console.log("[MeetingRecorder] No meeting recording in progress");
       return;
     }
 
-    console.log(`[${getCurrentTimeTag()}] Stopping meeting recording`);
+    console.log(`[MeetingRecorder] Stopping meeting recording`);
 
     if (this.recordingProcess) {
       try {
         this.recordingProcess.kill("SIGINT");
       } catch (e) {
-        console.error("Error stopping recording process:", e);
+        console.error("[MeetingRecorder] Error stopping recording process:", e);
       }
       this.recordingProcess = null;
     }
@@ -100,23 +151,49 @@ class MeetingRecorder {
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
 
-    display({
-      status: "meeting_saved",
-      emoji: "✅",
-      text: `Meeting saved!\nDuration: ${minutes}m ${seconds}s\n${this.currentMeetingFile.split('/').pop()}`,
-      RGB: "#00ff00",
-      scroll_speed: 3,
-    });
+    // Validate file was created successfully
+    setTimeout(() => {
+      if (fs.existsSync(this.currentMeetingFile)) {
+        const stats = fs.statSync(this.currentMeetingFile);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        
+        if (stats.size > 0) {
+          console.log(`[MeetingRecorder] Recording saved successfully:`);
+          console.log(`  File: ${this.currentMeetingFile}`);
+          console.log(`  Size: ${fileSizeMB} MB`);
+          console.log(`  Duration: ${minutes}m ${seconds}s`);
+          
+          display({
+            status: "meeting_saved",
+            emoji: "✅",
+            text: `Meeting saved! (${fileSizeMB}MB)\nDuration: ${minutes}m ${seconds}s\n${this.currentMeetingFile.split('/').pop()}`,
+            RGB: "#00ff00",
+            scroll_speed: 3,
+          });
 
-    console.log(`Meeting recording saved: ${this.currentMeetingFile}`);
-    console.log(`Duration: ${minutes} minutes ${seconds} seconds`);
-    console.log(`Transfer to desktop for transcription with:`);
-    console.log(`python transcribe_meeting.py ${this.currentMeetingFile}`);
-
-    // Optional: Auto-transfer to desktop
-    if (process.env.AUTO_TRANSFER_MEETINGS === "true") {
-      this.transferToDesktop();
-    }
+          // Optional: Auto-transfer to desktop
+          if (process.env.AUTO_TRANSFER_MEETINGS === "true") {
+            this.transferToDesktop();
+          }
+        } else {
+          console.error(`[MeetingRecorder] Recording file is empty (0 bytes)`);
+          display({
+            status: "error",
+            emoji: "⚠️",
+            text: "Recording failed!\nFile is empty.",
+            RGB: "#ff6800",
+          });
+        }
+      } else {
+        console.error(`[MeetingRecorder] Recording file was not created: ${this.currentMeetingFile}`);
+        display({
+          status: "error",
+          emoji: "❌",
+          text: "Recording failed!\nFile not found.",
+          RGB: "#ff0000",
+        });
+      }
+    }, 500); // Wait 500ms for file to be flushed to disk
 
     this.startTime = null;
     

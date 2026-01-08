@@ -74,10 +74,32 @@ class ChatFlow {
 
   async recognizeAudio(path: string): Promise<string> {
     if ((await getRecordFileDurationMs(path)) < 500) {
-      console.log("Record audio too short, skipping recognition.");
+      console.log("[ChatFlow] Record audio too short, skipping recognition.");
       return Promise.resolve("");
     }
-    return recognizeAudio(path);
+    
+    // Add timeout and error handling for ASR
+    const ASR_TIMEOUT_MS = 30000; // 30 seconds
+    const timeoutPromise = new Promise<string>((_, reject) => {
+      setTimeout(() => reject(new Error("ASR timeout after 30 seconds")), ASR_TIMEOUT_MS);
+    });
+    
+    try {
+      const result = await Promise.race([
+        recognizeAudio(path),
+        timeoutPromise
+      ]);
+      return result;
+    } catch (error) {
+      console.error(`[ChatFlow] ASR Error:`, error);
+      display({
+        status: "error",
+        emoji: "⚠️",
+        text: `Voice recognition failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        RGB: "#ff0000",
+      });
+      throw error;
+    }
   }
 
   partialThinkingCallback = (
@@ -161,11 +183,18 @@ class ChatFlow {
         });
         result
           .then(() => {
+            console.log(`[ChatFlow] Recording completed: ${this.currentRecordFilePath}`);
             this.setCurrentFlow("asr");
           })
           .catch((err) => {
-            console.error("Error during recording:", err);
-            this.setCurrentFlow("sleep");
+            console.error(`[ChatFlow] Recording Error:`, err);
+            display({
+              status: "error",
+              emoji: "🎤",
+              text: "Recording failed. Please try again.",
+              RGB: "#ff0000",
+            });
+            setTimeout(() => this.setCurrentFlow("sleep"), 3000);
           });
         display({
           status: "listening",
@@ -188,20 +217,38 @@ class ChatFlow {
             });
             onButtonReleased(noop);
           }),
-        ]).then((result) => {
+        ])
+        .then((result) => {
           if (this.currentFlowName !== "asr") return;
           if (result === "[UserPress]") {
+            console.log("[ChatFlow] User interrupted ASR with button press");
             this.setCurrentFlow("listening");
           } else {
             if (result) {
-              console.log("Audio recognized result:", result);
+              console.log(`[ChatFlow] ASR Success - Text: "${result}"`
+              );
               this.asrText = result;
               display({ status: "recognizing", text: result });
               this.setCurrentFlow("answer");
             } else {
+              console.log("[ChatFlow] ASR returned empty result");
               this.setCurrentFlow("sleep");
             }
           }
+        })
+        .catch((error) => {
+          console.error(`[ChatFlow] ASR Failed:", error);
+          display({
+            status: "error",
+            emoji: "❌",
+            text: "Could not understand audio. Please try again.",
+            RGB: "#ff0000",
+          });
+          setTimeout(() => {
+            if (this.currentFlowName === "asr") {
+              this.setCurrentFlow("sleep");
+            }
+          }, 3000);
         });
         break;
       case "answer":
@@ -223,44 +270,101 @@ class ChatFlow {
         } = this.streamResponser;
         this.partialThinking = "";
         this.thinkingSentences = [];
-        chatWithLLMStream(
-          [
-            {
-              role: "user",
-              content: this.asrText,
-            },
-          ],
-          (text) =>
-            currentAnswerId === this.answerId && partial(text),
-          () =>
-            currentAnswerId === this.answerId && endPartial(),
-          (partialThinking) =>
-            currentAnswerId === this.answerId &&
-            this.partialThinkingCallback(partialThinking),
-          (functionName: string, result?: string) => {
-            if (result) {
-              display({
-                text: `[${functionName}]${result}`,
-              });
-            } else {
-              display({
-                text: `Invoking [${functionName}]...`,
-              });
-            }
+        
+        // Wrap LLM streaming with timeout and error handling
+        const LLM_TIMEOUT_MS = 60000; // 60 seconds for LLM
+        const llmTimeoutTimer = setTimeout(() => {
+          console.error(`[ChatFlow] LLM timeout after ${LLM_TIMEOUT_MS / 1000} seconds`);
+          if (this.currentFlowName === "answer") {
+            display({
+              status: "error",
+              emoji: "⏱️",
+              text: "Response took too long. Please try again.",
+              RGB: "#ff6800",
+            });
+            setTimeout(() => this.setCurrentFlow("sleep"), 3000);
           }
-        );
+        }, LLM_TIMEOUT_MS);
+        
+        console.log(`[ChatFlow] Starting LLM stream for: "${this.asrText}"`);
+        
+        try {
+          chatWithLLMStream(
+            [
+              {
+                role: "user",
+                content: this.asrText,
+              },
+            ],
+            (text) => {
+              clearTimeout(llmTimeoutTimer); // Clear timeout on first response
+              return currentAnswerId === this.answerId && partial(text);
+            },
+            () => {
+              clearTimeout(llmTimeoutTimer);
+              console.log(`[ChatFlow] LLM stream completed successfully`);
+              return currentAnswerId === this.answerId && endPartial();
+            },
+            (partialThinking) =>
+              currentAnswerId === this.answerId &&
+              this.partialThinkingCallback(partialThinking),
+            (functionName: string, result?: string) => {
+              if (result) {
+                console.log(`[ChatFlow] Function [${functionName}] returned: ${result}`);
+                display({
+                  text: `[${functionName}]${result}`,
+                });
+              } else {
+                console.log(`[ChatFlow] Invoking function: ${functionName}`);
+                display({
+                  text: `Invoking [${functionName}]...`,
+                });
+              }
+            }
+          ).catch((error) => {
+            clearTimeout(llmTimeoutTimer);
+            console.error(`[ChatFlow] LLM Stream Error:`, error);
+            display({
+              status: "error",
+              emoji: "❌",
+              text: `AI error: ${error instanceof Error ? error.message : 'Please try again'}`,
+              RGB: "#ff0000",
+            });
+            setTimeout(() => {
+              if (this.currentFlowName === "answer") {
+                this.setCurrentFlow("sleep");
+              }
+            }, 3000);
+          });
+        } catch (error) {
+          clearTimeout(llmTimeoutTimer);
+          console.error(`[ChatFlow] Failed to start LLM stream:`, error);
+          display({
+            status: "error",
+            emoji: "❌",
+            text: "Could not connect to AI. Please try again.",
+            RGB: "#ff0000",
+          });
+          setTimeout(() => this.setCurrentFlow("sleep"), 3000);
+        }
+        
         getPlayEndPromise().then(() => {
           if (this.currentFlowName === "answer") {
             const img = getLatestDisplayImg();
             if (img) {
+              console.log(`[ChatFlow] Displaying generated image: ${img}`);
               display({
                 image: img,
               });
               this.setCurrentFlow("image");
             } else {
+              console.log(`[ChatFlow] No image to display, returning to sleep`);
               this.setCurrentFlow("sleep");
             }
           }
+        }).catch((error) => {
+          console.error(`[ChatFlow] Error in play end promise:`, error);
+          this.setCurrentFlow("sleep");
         });
         onButtonPressed(() => {
           stopPlaying();

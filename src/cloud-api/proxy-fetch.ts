@@ -48,7 +48,9 @@ function createUndiciProxyFetch() {
   let dispatcher = undefined;
 
   if (proxyUrl) {
-    console.log("[undici] Using proxy:", proxyUrl);
+    // Mask credentials in proxy URL before logging
+    const maskedUrl = proxyUrl.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.log("[undici] Using proxy:", maskedUrl);
     dispatcher = new ProxyAgent(proxyUrl);
   } else {
     console.log("[undici] No proxy configured");

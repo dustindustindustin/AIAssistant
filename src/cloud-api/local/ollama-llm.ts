@@ -47,6 +47,17 @@ const resetChatHistory = (): void => {
   });
 };
 
+// Health check for Ollama service
+const checkOllamaHealth = async (): Promise<boolean> => {
+  try {
+    const response = await axios.get(`${ollamaEndpoint}/api/tags`, { timeout: 3000 });
+    return response.status === 200;
+  } catch (error) {
+    console.error(`[Ollama] Service health check failed:`, error instanceof Error ? error.message : error);
+    return false;
+  }
+};
+
 const chatWithLLMStream: ChatWithLLMStreamFunction = async (
   inputMessages: Message[] = [],
   partialCallback: (partialAnswer: string) => void,
@@ -54,6 +65,14 @@ const chatWithLLMStream: ChatWithLLMStreamFunction = async (
   partialThinkingCallback?: (partialThinking: string) => void,
   invokeFunctionCallback?: (functionName: string, result?: string) => void
 ): Promise<void> => {
+  
+  // Check if Ollama service is available
+  const isHealthy = await checkOllamaHealth();
+  if (!isHealthy) {
+    console.error(`[Ollama] Service not available at ${ollamaEndpoint}`);
+    throw new Error(`Ollama service not available. Please ensure Ollama is running.`);
+  }
+  
   if (shouldResetChatHistory()) {
     resetChatHistory();
   }
@@ -74,6 +93,7 @@ const chatWithLLMStream: ChatWithLLMStreamFunction = async (
   const functionCallsPackages: OllamaFunctionCall[][] = [];
 
   try {
+    console.log(`[Ollama] Sending request to model: ${ollamaModel}`);
     const response = await axios.post(
       `${ollamaEndpoint}/api/chat`,
       {
@@ -225,9 +245,20 @@ const chatWithLLMStream: ChatWithLLMStreamFunction = async (
       }
     });
   } catch (error: any) {
-    console.error("Error:", error.message);
+    console.error("[Ollama] Error during streaming:", error);
+    
+    // Provide specific error messages based on error type
+    if (error.code === 'ECONNREFUSED') {
+      console.error(`[Ollama] Connection refused to ${ollamaEndpoint}. Is Ollama running?`);
+    } else if (error.response?.status === 404) {
+      console.error(`[Ollama] Model '${ollamaModel}' not found. Available models can be listed with: ollama list`);
+    } else if (error.response?.status === 400) {
+      console.error(`[Ollama] Bad request. Check if model supports tools if OLLAMA_ENABLE_TOOLS=true`);
+    }
+    
     endResolve();
     endCallback();
+    throw error; // Re-throw so ChatFlow can handle it
   }
 
   return promise;

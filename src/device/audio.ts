@@ -52,12 +52,16 @@ let currentRecordingReject: (reason?: any) => void = noop;
 
 const killAllRecordingProcesses = (): void => {
   recordingProcessList.forEach((child) => {
-    console.log("Killing recording process", child.pid);
+    console.log(`[Audio] Killing recording process PID: ${child.pid}`);
     try {
       child.kill("SIGINT");
-    } catch (e) {}
+    } catch (e) {
+      console.error(`[Audio] Failed to kill process ${child.pid}:`, e);
+    }
   });
+  const processCount = recordingProcessList.length;
   recordingProcessList.length = 0;
+  console.log(`[Audio] Cleared ${processCount} recording process(es) from tracking`);
 };
 
 const recordAudio = (
