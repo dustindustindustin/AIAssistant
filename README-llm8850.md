@@ -1,8 +1,8 @@
 # Integrate LLM8850 Local Services
 
-This section explains how to set up and integrate the LLM8850 local services (Whisper ASR, Melotts TTS, and Qwen3 LLM API) with the Whisplay AI Chatbot.
+This section explains how to set up and integrate the LLM8850 local services (Whisper ASR, Melotts TTS, and Qwen3 LLM API) with the AI-Assistant.
 
-We did some modifications on the LLM8850 demo project to make it easier to integrate with the Whisplay AI Chatbot.
+We did some modifications on the LLM8850 demo project to make it easier to integrate with the AI-Assistant.
 
 <img width="800" alt="chatbot-structure" src="https://github.com/user-attachments/assets/30b9aebe-96d5-4e82-abbb-acb6cea0360d" />
 

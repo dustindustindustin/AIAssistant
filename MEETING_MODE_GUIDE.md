@@ -6,7 +6,7 @@ This guide explains how to use the new **Meeting Recording Mode** feature to rec
 
 ## 🎯 Overview
 
-The Whisplay AI Chatbot now supports **dual recording modes**:
+The AI-Assistant now supports **dual recording modes**:
 
 1. **Quick Question Mode** (original) - Press & hold button for short queries
 2. **Meeting Recording Mode** (new) - Triple-click to start/stop long continuous recordings
@@ -27,7 +27,7 @@ ENABLE_MEETING_MODE=true
 MEETING_MAX_DURATION=14400  # in seconds
 
 # Optional: Custom directory for meeting recordings
-MEETING_DIR=/home/pi/whisplay-ai-chatbot/data/meetings
+MEETING_DIR=/home/pi/ai-assistant/data/meetings
 ```
 
 ### 2. Rebuild the Project

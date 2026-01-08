@@ -1,6 +1,6 @@
-# Whisplay-AI-Chatbot
+# AI-Assistant
 
-<img src="https://docs.pisugar.com/img/whisplay_logo@4x-8.png" alt="Whisplay AI Chatbot" width="200" />
+<img src="https://docs.pisugar.com/img/whisplay_logo@4x-8.png" alt="AI-Assistant" width="200" />
 
 This is a pocket-sized AI chatbot device built using a Raspberry Pi Zero 2w. Just press the button, speak, and it talks back—like a futuristic walkie-talkie with a mind of its own.
 
@@ -21,7 +21,7 @@ Tutorial 2 (offline version build on RPi 5):
 
 ## Pre-build Image
 
-- Please find the pre-build images in project wiki: https://github.com/PiSugar/whisplay-ai-chatbot/wiki
+- Please find the pre-build images in original project wiki: https://github.com/PiSugar/whisplay-ai-chatbot/wiki
 
 ## Drivers
 
@@ -31,8 +31,8 @@ You need to firstly install the audio drivers for the Whisplay HAT. Follow the i
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/PiSugar/whisplay-ai-chatbot.git
-   cd whisplay-ai-chatbot
+   git clone https://github.com/dustindustindustin/AIAssistant.git
+   cd AIAssistant
    ```
 2. Install dependencies:
    ```bash
@@ -75,7 +75,7 @@ pip install -r requirements.txt --break-system-packages
 If you need to update the environment variables, you can edit the `.env` file directly. After making changes, please restart the chatbot service with:
 
 ```bash
-systemctl restart whisplay-ai-chatbot.service
+systemctl restart chatbot.service
 ```
 
 ## Image Generation
@@ -136,4 +136,4 @@ Please refer to the [LLM8850 Integration Guide](README-llm8850.md) for detailed 
 
 ## License
 
-[GPL-3.0](https://github.com/PiSugar/whisplay-ai-chatbot?tab=GPL-3.0-1-ov-file#readme)
+[GPL-3.0](LICENSE)

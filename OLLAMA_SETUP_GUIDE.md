@@ -1,6 +1,6 @@
 # Complete Ollama Stack Setup Guide
 
-This guide walks through setting up a **fully private, local AI stack** for your Whisplay AI Chatbot using Ollama, Whisper, and Piper.
+This guide walks through setting up a **fully private, local AI stack** for your AI-Assistant using Ollama, Whisper, and Piper.
 
 ---
 
@@ -57,7 +57,7 @@ ollama pull qwen3-vl:2b
 
 If you haven't already:
 ```bash
-cd ~/whisplay-ai-chatbot
+cd ~/ai-assistant
 bash install_dependencies.sh
 source ~/.bashrc
 ```
@@ -84,9 +84,15 @@ whisper --help
 mkdir -p ~/piper
 cd ~/piper
 
-# Download Piper binary for ARM64
-wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_arm64.tar.gz
-tar -xzf piper_arm64.tar.gz
+# Download Piper binary for ARM64 (check your architecture first)
+uname -m  # Should show aarch64 for Pi Zero W2
+
+# Download Piper (use aarch64 for 64-bit Pi OS)
+wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_aarch64.tar.gz
+tar -xzf piper_aarch64.tar.gz
+
+# The archive extracts to a nested piper directory
+cd piper
 chmod +x piper
 
 # Download voice model (Amy - US English female)
@@ -96,16 +102,17 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/mediu
 wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json
 
 # Test Piper
-cd ~/piper
+cd ~/piper/piper
 echo "Hello world" | ./piper --model voices/en_US-amy-medium.onnx --output_file test.wav
+aplay test.wav
 ```
 
 ### Step 4: Configure Environment Variables
 
-Edit `.env` file in your whisplay-ai-chatbot directory:
+Edit `.env` file in your ai-assistant directory:
 
 ```bash
-cd ~/whisplay-ai-chatbot
+cd ~/ai-assistant
 nano .env
 ```
 
@@ -127,9 +134,9 @@ OLLAMA_ENABLE_TOOLS=true
 WHISPER_MODEL_SIZE=tiny
 WHISPER_LANGUAGE=English
 
-# Piper Configuration
-PIPER_BINARY_PATH=/home/pi/piper/piper
-PIPER_MODEL_PATH=/home/pi/piper/voices/en_US-amy-medium.onnx
+# Piper Configuration (note the nested piper/piper directory structure)
+PIPER_BINARY_PATH=/home/pi/piper/piper/piper
+PIPER_MODEL_PATH=/home/pi/piper/piper/voices/en_US-amy-medium.onnx
 
 # Optional: Enable thinking display
 ENABLE_THINKING=true
@@ -145,7 +152,7 @@ ENABLE_THINKING=true
 ### Step 5: Build and Run
 
 ```bash
-cd ~/whisplay-ai-chatbot
+cd ~/ai-assistant
 bash build.sh
 bash run_chatbot.sh
 ```
@@ -172,15 +179,20 @@ bash run_chatbot.sh
 | **deepseek-r1:7b** | 4.7GB | 6GB | ⭐⭐⭐⭐ | ⚡⚡ | ✅ | ✅ |
 | **qwen3:8b** | 5.0GB | 6GB | ⭐⭐⭐⭐ | ⚡⚡ | ✅ | ✅ |
 | **gemma3:12b** | 8.1GB | 10GB | ⭐⭐⭐⭐ | ⚡ | ✅ | ❌ |
+| **phi4** | 8.5GB | 10GB | ⭐⭐⭐⭐⭐ | ⚡⚡ | ✅ | ✅ |
 | **qwen2.5:14b** | 9.0GB | 12GB | ⭐⭐⭐⭐⭐ | ⚡ | ✅ | ❌ |
 
 **To upgrade:**
 ```bash
 # On your desktop computer
 ollama pull qwen3:3b
+# Or for excellent quality with strong reasoning:
+ollama pull phi4
 
 # Update .env on Raspberry Pi
 OLLAMA_MODEL=qwen3:3b
+# Or:
+OLLAMA_MODEL=phi4
 ```
 
 **Benefits:**
@@ -511,7 +523,6 @@ curl http://YOUR_COMPUTER_IP:11434/api/ps
 
 | Model | Size | VRAM | Special Feature | Why Consider |
 |-------|------|------|-----------------|--------------|
-| **llama4:maverick** | 245GB | Won't fit | Meta's absolute best | If you get more VRAM later |
 | **llama4:scout** | 67GB | ~72GB | Latest Meta (109B) | Cutting-edge, just released |
 | **gpt-oss:120b** | ~70GB | ~75GB | OpenAI open-source | Reasoning + safeguards |
 | **qwen3-next:80b** | ~48GB | ~54GB | Newest Qwen variant | Better efficiency |
@@ -615,6 +626,25 @@ ollama pull qwen3-vl:4b               # 2.5GB - Vision
 
 ## �🔍 Troubleshooting
 
+### Display Socket Error (ECONNREFUSED 0.0.0.0:12345)
+
+**What it means:** Chatbot can't connect to the PiSugar Whisplay HAT display service.
+
+**Impact:** Display won't show status. **Voice functionality still works!**
+
+**To fix (optional):**
+```bash
+cd ~
+git clone https://github.com/PiSugar/whisplay.git
+cd whisplay/Driver
+sudo bash install_wm8960_drive.sh
+sudo reboot
+```
+
+**Note:** This installs the WM8960 audio HAT drivers. The standalone install.sh doesn't exist in the whisplay repo.
+
+---
+
 ### Pi Can't Connect to Ollama
 
 **Check connectivity:**
@@ -624,9 +654,47 @@ curl http://192.168.1.100:11434/api/version
 ```
 
 **If it fails:**
-1. Verify computer IP address
-2. Check firewall allows port 11434
-3. Ensure Ollama is running: `ollama serve`
+1. Verify computer IP address: `ipconfig` (Windows) or `ip addr` (Linux)
+2. Check firewall allows port 11434 (see Part 1, Step 3)
+3. Verify OLLAMA_HOST environment variable is set to `0.0.0.0:11434`
+4. Restart Ollama service or reboot your PC
+5. Ensure Ollama is running: `ollama serve`
+
+**Windows Firewall Fix:**
+```powershell
+# Run PowerShell as Administrator
+New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 11434 -Protocol TCP -Action Allow
+```
+
+---
+
+### Piper Download 404 Error
+
+**If `piper_arm64.tar.gz` gives 404:**
+```bash
+# Check your architecture first
+uname -m  # Should show aarch64 for Pi Zero W2
+
+# Use the correct file name
+wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_aarch64.tar.gz
+# OR for armv7l systems:
+wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_armv7l.tar.gz
+```
+
+**Note:** The archive extracts to a nested `piper/piper` directory structure. Your paths should be:
+- Binary: `/home/pi/piper/piper/piper`
+- Voice: `/home/pi/piper/piper/voices/en_US-amy-medium.onnx`
+
+---
+
+### Piper Permission Denied
+
+**If you can't cd into piper directory:**
+```bash
+chmod +x piper
+cd piper
+chmod +x piper  # For the executable inside
+```
 
 ---
 
@@ -758,7 +826,7 @@ ENABLE_THINKING=true
 - **Ollama Models:** https://ollama.com/library
 - **Piper Voices:** https://rhasspy.github.io/piper-samples/
 - **Whisper Documentation:** https://github.com/openai/whisper
-- **Project Repository:** https://github.com/PiSugar/whisplay-ai-chatbot
+- **Original Project Repository:** https://github.com/PiSugar/whisplay-ai-chatbot
 
 ---
 
