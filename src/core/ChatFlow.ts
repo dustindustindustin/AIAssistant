@@ -91,11 +91,11 @@ class ChatFlow {
       ]);
       return result;
     } catch (error) {
-      console.error(`[ChatFlow] ASR Error:`, error);
+      console.error("[ChatFlow] ASR Error:", error);
       display({
         status: "error",
         emoji: "⚠️",
-        text: `Voice recognition failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        text: "Voice recognition failed: " + (error instanceof Error ? error.message : "Unknown error"),
         RGB: "#ff0000",
       });
       throw error;
@@ -183,7 +183,7 @@ class ChatFlow {
         });
         result
           .then(() => {
-            console.log(`[ChatFlow] Recording completed: ${this.currentRecordFilePath}`);
+            console.log("[ChatFlow] Recording completed: " + this.currentRecordFilePath);
             this.setCurrentFlow("asr");
           })
           .catch((err) => {
@@ -225,8 +225,7 @@ class ChatFlow {
             this.setCurrentFlow("listening");
           } else {
             if (result) {
-              console.log(`[ChatFlow] ASR Success - Text: "${result}"`
-              );
+              console.log("[ChatFlow] ASR Success - Text: \"" + result + "\"");
               this.asrText = result;
               display({ status: "recognizing", text: result });
               this.setCurrentFlow("answer");
@@ -274,7 +273,7 @@ class ChatFlow {
         // Wrap LLM streaming with timeout and error handling
         const LLM_TIMEOUT_MS = 60000; // 60 seconds for LLM
         const llmTimeoutTimer = setTimeout(() => {
-          console.error(`[ChatFlow] LLM timeout after ${LLM_TIMEOUT_MS / 1000} seconds`);
+          console.error("[ChatFlow] LLM timeout after " + (LLM_TIMEOUT_MS / 1000) + " seconds");
           if (this.currentFlowName === "answer") {
             display({
               status: "error",
@@ -286,7 +285,7 @@ class ChatFlow {
           }
         }, LLM_TIMEOUT_MS);
         
-        console.log(`[ChatFlow] Starting LLM stream for: "${this.asrText}"`);
+        console.log("[ChatFlow] Starting LLM stream for: \"" + this.asrText + "\"");
         
         try {
           chatWithLLMStream(
@@ -302,7 +301,7 @@ class ChatFlow {
             },
             () => {
               clearTimeout(llmTimeoutTimer);
-              console.log(`[ChatFlow] LLM stream completed successfully`);
+              console.log("[ChatFlow] LLM stream completed successfully");
               return currentAnswerId === this.answerId && endPartial();
             },
             (partialThinking) =>
@@ -310,24 +309,24 @@ class ChatFlow {
               this.partialThinkingCallback(partialThinking),
             (functionName: string, result?: string) => {
               if (result) {
-                console.log(`[ChatFlow] Function [${functionName}] returned: ${result}`);
+                console.log("[ChatFlow] Function [" + functionName + "] returned: " + result);
                 display({
-                  text: `[${functionName}]${result}`,
+                  text: "[" + functionName + "]" + result,
                 });
               } else {
-                console.log(`[ChatFlow] Invoking function: ${functionName}`);
+                console.log("[ChatFlow] Invoking function: " + functionName);
                 display({
-                  text: `Invoking [${functionName}]...`,
+                  text: "Invoking [" + functionName + "]...",
                 });
               }
             }
           ).catch((error) => {
             clearTimeout(llmTimeoutTimer);
-            console.error(`[ChatFlow] LLM Stream Error:`, error);
+            console.error("[ChatFlow] LLM Stream Error:", error);
             display({
               status: "error",
               emoji: "❌",
-              text: `AI error: ${error instanceof Error ? error.message : 'Please try again'}`,
+              text: "AI error: " + (error instanceof Error ? error.message : "Please try again"),
               RGB: "#ff0000",
             });
             setTimeout(() => {
@@ -338,7 +337,7 @@ class ChatFlow {
           });
         } catch (error) {
           clearTimeout(llmTimeoutTimer);
-          console.error(`[ChatFlow] Failed to start LLM stream:`, error);
+          console.error("[ChatFlow] Failed to start LLM stream:", error);
           display({
             status: "error",
             emoji: "❌",
@@ -352,18 +351,18 @@ class ChatFlow {
           if (this.currentFlowName === "answer") {
             const img = getLatestDisplayImg();
             if (img) {
-              console.log(`[ChatFlow] Displaying generated image: ${img}`);
+              console.log("[ChatFlow] Displaying generated image: " + img);
               display({
                 image: img,
               });
               this.setCurrentFlow("image");
             } else {
-              console.log(`[ChatFlow] No image to display, returning to sleep`);
+              console.log("[ChatFlow] No image to display, returning to sleep");
               this.setCurrentFlow("sleep");
             }
           }
         }).catch((error) => {
-          console.error(`[ChatFlow] Error in play end promise:`, error);
+          console.error("[ChatFlow] Error in play end promise:", error);
           this.setCurrentFlow("sleep");
         });
         onButtonPressed(() => {
