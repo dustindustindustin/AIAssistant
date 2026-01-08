@@ -40,7 +40,7 @@ class ChatFlow {
   enableMeetingMode: boolean = false;
 
   constructor(options: { enableCamera?: boolean } = {}) {
-    console.log(`[${getCurrentTimeTag()}] ChatBot started.`);
+    console.log("[" + getCurrentTimeTag() + "] ChatBot started.");
     this.recordingsDir = recordingsDir;
     this.enableMeetingMode = process.env.ENABLE_MEETING_MODE === "true";
     this.meetingRecorder = new MeetingRecorder();
@@ -122,7 +122,7 @@ class ChatFlow {
   };
 
   setCurrentFlow = (flowName: string): void => {
-    console.log(`[${getCurrentTimeTag()}] switch to:`, flowName);
+    console.log("[" + getCurrentTimeTag() + "] switch to:", flowName);
     switch (flowName) {
       case "sleep":
         this.currentFlowName = "sleep";
@@ -132,9 +132,9 @@ class ChatFlow {
         onButtonReleased(noop);
         // camera mode
         if (this.enableCamera) {
-          const captureImgPath = `${cameraDir}/capture-${moment().format(
+          const captureImgPath = cameraDir + "/capture-" + moment().format(
             "YYYYMMDD-HHmmss"
-          )}.jpg`;
+          ) + ".jpg";
           onButtonDoubleClick(() => {
             display({
               camera_mode: true,
@@ -148,7 +148,7 @@ class ChatFlow {
         // meeting mode
         if (this.enableMeetingMode) {
           onButtonTripleClick(() => {
-            console.log(`[${getCurrentTimeTag()}] Triple-click detected - toggling meeting mode`);
+            console.log("[" + getCurrentTimeTag() + "] Triple-click detected - toggling meeting mode");
             this.meetingRecorder.toggle();
           });
         }
@@ -158,9 +158,9 @@ class ChatFlow {
           RGB: "#000055",
           ...(getCurrentStatus().text === "Listening..."
             ? {
-                text: `Long Press the button to say something${
-                  this.enableCamera ? ",\ndouble click to launch camera" : ""
-                }${this.enableMeetingMode ? ",\ntriple click for meeting mode" : ""}.`,
+                text: "Long Press the button to say something" +
+                  (this.enableCamera ? ",\ndouble click to launch camera" : "") +
+                  (this.enableMeetingMode ? ",\ntriple click for meeting mode" : "") + ".",
               }
             : {}),
         });
@@ -168,9 +168,8 @@ class ChatFlow {
       case "listening":
         this.answerId += 1;
         this.currentFlowName = "listening";
-        this.currentRecordFilePath = `${
-          this.recordingsDir
-        }/user-${Date.now()}.${recordFileFormat}`;
+        this.currentRecordFilePath = this.recordingsDir +
+          "/user-" + Date.now() + "." + recordFileFormat;
         onButtonPressed(noop);
         const { result, stop } = recordAudioManually(
           this.currentRecordFilePath
@@ -187,7 +186,7 @@ class ChatFlow {
             this.setCurrentFlow("asr");
           })
           .catch((err) => {
-            console.error(`[ChatFlow] Recording Error:`, err);
+            console.error("[ChatFlow] Recording Error:", err);
             display({
               status: "error",
               emoji: "🎤",
@@ -236,7 +235,7 @@ class ChatFlow {
           }
         })
         .catch((error) => {
-          console.error(`[ChatFlow] ASR Failed:", error);
+          console.error("[ChatFlow] ASR Failed:", error);
           display({
             status: "error",
             emoji: "❌",
