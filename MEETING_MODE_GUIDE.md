@@ -394,7 +394,9 @@ Potential features being considered:
 
 If you encounter issues:
 
-1. Check logs: `tail -f chatbot.log`
+1. Check logs:
+   - If running as service: `tail -f /home/pi/ai-assistant/chatbot.log`
+   - If running manually: logs appear in terminal
 2. Test components individually (see Troubleshooting)
 3. Review this guide
 4. Open an issue on GitHub

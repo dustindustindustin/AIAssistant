@@ -54,7 +54,13 @@ You need to firstly install the audio drivers for the Whisplay HAT. Follow the i
    sudo bash startup.sh
    ```
    Please note that this will disable the graphical interface and set the system to multi-user mode, which is suitable for headless operation.
-   You can find the output logs at `chatbot.log`. Running `tail -f chatbot.log` will also display the logs in real-time.
+   
+   When running as a service, logs are written to `/home/pi/ai-assistant/chatbot.log`. You can view them with:
+   ```bash
+   tail -f /home/pi/ai-assistant/chatbot.log
+   ```
+   
+   When running manually with `bash run_chatbot.sh`, logs appear in the terminal (stdout/stderr).
 
 ## Build After Code Changes
 
@@ -63,6 +69,12 @@ If you make changes to the node code or just pull the new code from this reposit
 ```bash
 bash build.sh
 ```
+
+**Note:** This project uses **yarn** as the package manager. If you see a warning about `package-lock.json`, you can safely remove it:
+```bash
+rm package-lock.json
+```
+Always use `yarn` commands instead of `npm` to avoid dependency conflicts.
 
 If If you encounter `ModuleNotFoundError` or there's new third-party libraries to the python code, please run the following command to update the dependencies for python:
 ```
@@ -96,6 +108,19 @@ Or use the following command to install it:
 wget https://cdn.pisugar.com/release/pisugar-power-manager.sh
 bash pisugar-power-manager.sh -c release
 ```
+
+## Error Handling & Recovery
+
+The chatbot includes built-in error handling for common issues:
+
+- **ASR Timeout:** 30-second timeout for speech recognition with user-friendly error messages
+- **LLM Timeout:** 60-second timeout for LLM responses with automatic recovery
+- **Auto-Recovery:** Automatically returns to sleep mode after errors (3-second delay)
+- **Disk Space Checks:** Meeting recorder validates 500MB free space before starting
+- **Health Checks:** Pre-flight validation for Ollama service availability
+- **Process Tracking:** Audio process management prevents resource leaks
+
+All errors display user-friendly messages on the screen and log detailed information for troubleshooting.
 
 ## Data Folder
 

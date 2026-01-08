@@ -632,8 +632,9 @@ ollama pull qwen3-vl:4b               # 2.5GB - Vision
 
 **Impact:** Display won't show status. **Voice functionality still works!**
 
-**To fix (optional):**
+**To fix:**
 ```bash
+# Install Whisplay HAT drivers (includes display socket service)
 cd ~
 git clone https://github.com/PiSugar/whisplay.git
 cd whisplay/Driver
@@ -641,7 +642,7 @@ sudo bash install_wm8960_drive.sh
 sudo reboot
 ```
 
-**Note:** This installs the WM8960 audio HAT drivers. The standalone install.sh doesn't exist in the whisplay repo.
+**Note:** This installs both the WM8960 audio drivers and the display socket service that the chatbot UI connects to.
 
 ---
 
