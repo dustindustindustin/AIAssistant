@@ -120,8 +120,15 @@ const chatWithLLMStream: ChatWithLLMStreamFunction = async (
       {
         headers: {
           "Content-Type": "application/json",
+          "Connection": "keep-alive",
         },
         responseType: "stream",
+        timeout: 300000, // 5 minutes
+        httpAgent: new (require('http').Agent)({ 
+          keepAlive: true,
+          keepAliveMsecs: 30000, // Send keepalive every 30 seconds
+          timeout: 300000
+        }),
       }
     );
 
